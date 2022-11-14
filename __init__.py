@@ -177,13 +177,19 @@ class Plugin:
             # self.script = None
             # self.scriptPrio = 0
             # self.isUserAdded = True
-            item = create_item(vorteil.name, "vorteil")
+            name = vorteil.name
+            if v in self.char.vorteileVariable:
+                name += f" ({self.char.vorteileVariable[v].kommentar})"
+            if name == "Minderpakt":
+                name += f" ({self.char.minderpakt})"
+            item = create_item(name, "vorteil")
             item["data"] = {
                 # "voraussetzung": ", ".join(vorteil.voraussetzungen),
                 "voraussetzung": vorteil.voraussetzungen,
                 "gruppe": vorteil.typ,  # TODO: vorteil.gruppe == vorteil.typ??
                 "text": vorteil.text
             }
+            # print(self.char.vorteileVariable)
             items.append(item)
         # # -- Eigenheiten -- #
         for e in self.char.eigenheiten:
@@ -281,11 +287,35 @@ class Plugin:
             items.append(item)
 
         # # -- Waffen -- #
-        print(self.char.waffen)
         for w in self.char.waffen:
             if not w.anzeigename:
                 continue
             item = waffe_item(w)
+            items.append(item)
+        # -- Rüstung -- #
+        for r in self.char.rüstung:
+            if not r.name:
+                continue
+            item = create_item(r.name, "ruestung")
+            item["data"] = {
+                "rs": r.getRSGesamtInt(),
+                "be": r.be,
+                "rs_beine": r.rs[0],
+                "rs_larm": r.rs[1],
+                "rs_rarm": r.rs[2],
+                "rs_bauch": r.rs[3],
+                "rs_brust": r.rs[4],
+                "rs_kopf": r.rs[5],
+                "aktiv": False,
+                "text": r.text
+            }
+            items.append(item)
+        # -- Inventar -- #
+        for a in self.char.ausrüstung:
+            if not a:
+                continue
+            item = create_item(a, "gegenstand")
+            item["data"] = {}
             items.append(item)
         return items
 
@@ -318,7 +348,7 @@ class Plugin:
         }
 
     def json_schreiben(self, val, params):
-        """Funktion wird als Filter in charakter_xml_schreiben (speichern) 
+        """Funktion wird als Filter in charakter_xml_schreiben (speichern)
         angewendet. `val` wird unverändert zurückgegeben wärend aus params['charakter']
         die json file für foundry generiert und gespeichert wird.
         """
@@ -329,7 +359,7 @@ class Plugin:
         # direct keys
         attribute = {attr: {
             "wert": self.char.attribute[attr].wert, "pw": 0} for attr in Definitionen.Attribute}
-        notes = self.char.kurzbeschreibung  # + "\n\n" + char.notizen
+        notes = self.char.kurzbeschreibung + "\n\n" + self.char.notiz
         data = {
             "gesundheit": {
                 "erschoepfung": 0,
@@ -452,7 +482,7 @@ class Plugin:
         # for talent in CharakterPrintUtility.getÜberTalente(char):
         #     content.append(talent.anzeigeName + " " + str(talent.pw))
 
-        path = os.path.splitext(params["filename"])[0] + "_foundryvtt.json"
+        path = os.path.splitext(params["filepath"])[0] + "_foundryvtt.json"
         with open(path, 'w', encoding="utf-8") as f:
             json.dump(actor, f, indent=2)
         return val
