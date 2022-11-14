@@ -1,7 +1,9 @@
 from EventBus import EventBus
 from Wolke import Wolke
 import Definitionen
+import Objekte
 import os
+import re
 import json
 from CharakterPrintUtility import CharakterPrintUtility
 import random
@@ -28,33 +30,39 @@ def create_item(name, type):
 
 
 def waffe_item(w):
-    waffe = create_item(w["name"], "nahkampfwaffe") # TODO if/else nah/fern
-    waffe["data"] = {
-        "haerte": 5,
+    # dropped infos:
+    # wafNode.set('id',waff.name)
+    #     wafNode.set('kampfstil',waff.kampfstil)
+    #         wafNode.set('lz',str(waff.lz))
+    # print(w)
+    wdata = {
+        "haerte": w.haerte,
         "beschaedigung": 0,
-        "dice_anzahl": 1,
-        "dice_plus": 2,
-        "fertigkeit": "Hiebwaffen",
-        "talent": "Einhandhiebwaffen",
-        "rw": 1,
+        "dice_anzahl": w.W6,
+        "dice_plus": w.plus,
+        "fertigkeit": w.fertigkeit,
+        "talent": "",
+        "rw": w.rw,
         "hauptwaffe": False,
         "nebenwaffe": False,
+        # TODO: make this a list in Foundry and write getters/checks if bools are required! #14
+        # 'eigenschaften': w.eigenschaften,  # TODO: list of strings?
         "eigenschaften": {
-          "kopflastig": True,
-          "niederwerfen": False,
-          "parierwaffe": False,
-          "reittier": False,
-          "ruestungsbrechend": False,
-          "schild": False,
-          "schwer_4": False,
-          "schwer_8": False,
-          "stumpf": True,
-          "unberechenbar": False,
-          "unzerstoerbar": False,
-          "wendig": False,
-          "zerbrechlich": False,
-          "zweihaendig": False,
-          "kein_malus_nebenwaffe": False
+            "kopflastig": True,
+            "niederwerfen": False,
+            "parierwaffe": False,
+            "reittier": False,
+            "ruestungsbrechend": False,
+            "schild": False,
+            "schwer_4": False,
+            "schwer_8": False,
+            "stumpf": True,
+            "unberechenbar": False,
+            "unzerstoerbar": False,
+            "wendig": False,
+            "zerbrechlich": False,
+            "zweihaendig": False,
+            "kein_malus_nebenwaffe": False
         },
         "text": "",
         "aufbewahrungs_ort": "mitführend",
@@ -62,162 +70,42 @@ def waffe_item(w):
         "gewicht_summe": 0,
         "gewicht": 1,
         "preis": 0,
-        "wm_at": -1,
-        "wm_vt": -1,
+        # TODO: is wm same for at/vt?
+        "wm_at": w.wm,
+        "wm_vt": w.wm,
         "mod_at": None,
         "mod_vt": None,
         "mod_schaden": ""
     }
-#     return {
-#         "_id": random_foundry_id(),
-#         "name": w['name'],
-#         "type": "angriff",
-#         "data": {
-#             "tp": self.tp,
-#             "haerte": self.haerte,
-#             "rw": self.rw,
-#             "lz": self.lz,
-#             "wm": self.wm,
-#             "typ": self.typ,
-#             "at": self.at,
-#             "vt": self.vt,
-#             "eigenschaften": [{
-#                 "name": we.name,
-#                 "text": we.text
-#             } for we in self.eigenschaften.all()]
-#         }
-#     }
-
-
+    if type(w) is Objekte.Nahkampfwaffe:
+        # w.anzeigename  -> is empty
+        waffe = create_item(w.anzeigename, "nahkampfwaffe")
+    else:
+        waffe = create_item(w.anzeigename, "fernkampfwaffe")
+        wdata['lz'] = w.lz  # TODO: this correct for FK?
+    waffe['data'] = wdata
+    return waffe
 
 
 class Plugin:
     def __init__(self):
-        EventBus.addAction("pdf_geschrieben", self.pdfGeschriebenHook)
+        # EventBus.addAction("pdf_geschrieben", self.pdfGeschriebenHook)
+        EventBus.addFilter("charakter_xml_schreiben", self.json_schreiben)
+
+    def speichernHook(self, val, params):
+        print(params['charakter'])
+        return val
 
     @staticmethod
     def getDescription():
-        return "Dieses Plugin speichert die Charakterwerte beim PDF-Export zusätzlich als JSON-Datei ab. Wenn das Ilaris-System für FoundryVTT aktiv ist können Charaktere so direkt als Actors importiert werden."
+        return "Dieses Plugin speichert die Charakterwerte beim PDF-Export \
+            zusätzlich als JSON-Datei ab.Wenn das Ilaris-System für FoundryVTT \
+            aktiv ist können Charaktere so direkt als Actors importiert werden."
 
-
-    def pdfGeschriebenHook(self, params):
-        char = Wolke.Char
-        # actor = {}
-        # actor['name'] = char.name
-
-        items = []
-        # for obj in char.waffen.all():
-        #     items.append(obj.as_item())
-        # for obj in char.cfertigkeiten.all():
-        #     items.append(obj.as_item())
-        #     for tal in obj.talente.all():
-        #         items.append(tal.as_item())
-        # TODO: übernat. fertigkeiten.. (export beispiel held magier)
-        # for obj in instance.ctalente.all():
-        #     items.append(obj.as_item())
-        # for obj in instance.ctalente.all():
-        #     items.append(obj.as_item())
-        # for obj in char.freiefertigkeiten.all():
-        #     items.append(obj.as_item())
-
-        for v in CharakterPrintUtility.getVorteile(char):
-            item = create_item(v, "vorteil")
-            item["data"] = {
-                "voraussetzung": "",  # TODO: vorteil.vorraussetzung
-                "gruppe": 0,  # TODO: vorteil.gruppe
-                "text": ""  # TODO: vorteil.text
-            }
-            items.append(item)
-        for e in char.eigenheiten:
-            if e:
-                item = create_item(e, "eigenheit")
-                items.append(item)
-        for f in char.fertigkeiten:
-            item = create_item(f.name, "fertigkeit")
-            item["data"] = {       
-                "basis": 0,
-                "fw": f.wert,
-                "pw": 0,
-                "attribut_0": f.attribute[0],
-                "attribut_1": f.attribute[1],
-                "attribut_2": f.attribute[2],
-                "gruppe": f.printclass,
-                "text": f.text
-            }
-            items.append(item)
-        # TODO: more items
-
-        # direct keys
-        attribute = { attr : {"wert": char.attribute[attr].wert, "pw": 0} for attr in Definitionen.Attribute}
-        notes = char.kurzbeschreibung # + "\n\n" + char.notizen
-        data = {
-            "gesundheit": {
-                "erschoepfung": 0,
-                "wunden": 0,
-                "wundabzuege": 0,
-                "display": "Volle Gesundheit",
-                "hp": {
-                    "max": 9,
-                    "value": 9,
-                    "threshold": 0
-                }
-            },
-            "attribute": attribute,
-            "abgeleitete": {  # updated by foundry
-                "globalermod": 0,
-                "ws": 0,
-                "ws_stern": 0,
-                "be": 0,
-                "be_traglast": 0,
-                "ws_beine": 0,
-                "ws_larm": 0,
-                "ws_rarm": 0,
-                "ws_bauch": 0,
-                "ws_brust": 0,
-                "ws_kopf": 0,
-                "mr": 0,
-                "gs": 0,
-                "ini": 0,
-                "dh": 0,
-                "traglast_intervall": 0,
-                "traglast": 0,
-                # TODO: folgende werte werden nicht abgeleitet
-                "gasp": None,
-                "asp_stern": None,
-                "asp_zugekauft": char.aspMod,  # TODO: sind aspMod == zugekauft??
-                "gkap": None,
-                "kap_stern": None,
-                "kap_zugekauft": char.kapMod,
-            },
-            "schips": {
-                "schips": char.schipsMax ,
-                "schips_stern": char.schipsMax 
-            },
-            "initiative": 0,
-            "furcht": {
-                "furchtstufe": 0,
-                "furchtabzuege": 0,
-                "display": ""
-            },
-            "modifikatoren": {
-                "manuellermod": 0,
-                "nahkampfmod": 0
-            },
-            "geld": {
-                "dukaten": 0,
-                "silbertaler": 0,
-                "heller": 0,
-                "kreuzer": 0
-            },
-            "getragen": 0,
-            "notes": notes,
-            "misc": {
-                "selected_kampfstil": "kvk"
-            }
-        },
+    def get_token(self):
         token = {
-            "name": char.name,
-            "img": "systems/Ilaris/assets/images/token/kreaturentypen/hummanoid.png",
+            "name": self.char.name,
+            "img": "systems/Ilaris/assets/images/token/kreaturentypen/humanoid.png",
             "displayName": 20,
             "actorLink": False,
             "width": 1,
@@ -264,27 +152,240 @@ class Plugin:
             "flags": {},
             "randomImg": False
         }
-        actor = {
-            "_id": random_foundry_id(),
-            "name": char.name,
-            "type": "held",
-            "img": "systems/Ilaris/assets/images/token/kreaturentypen/hummanoid.png",
-            # TODO: include base encoded character image?
-            "data": data,
-            "token": token,
-            "items": items,
-            "effects": []
+        return token
+
+    def get_items(self):
+        """ The data models defined in the Foundry system are called items.
+        They use templates and are collected in a huge list with unique random id's.
+        This function creates such items for:
+        - Vorteil
+        - Fertigkeit
+        - Eigenheit
+        - Waffe
+        - Talent
+        """
+        items = []
+        # -- Vorteile -- #
+        # for v in CharakterPrintUtility.getVorteile(self.char):
+        for v in self.char.vorteile:
+            vorteil = Wolke.DB.vorteile[v]
+            # self.kosten = -1
+            # self.variableKosten = False
+            # self.kommentarErlauben = False
+            # self.linkKategorie = VorteilLinkKategorie.NichtVerknüpfen
+            # self.linkElement = ''
+            # self.script = None
+            # self.scriptPrio = 0
+            # self.isUserAdded = True
+            item = create_item(vorteil.name, "vorteil")
+            item["data"] = {
+                # "voraussetzung": ", ".join(vorteil.voraussetzungen),
+                "voraussetzung": vorteil.voraussetzungen,
+                "gruppe": vorteil.typ,  # TODO: vorteil.gruppe == vorteil.typ??
+                "text": vorteil.text
+            }
+            items.append(item)
+        # # -- Eigenheiten -- #
+        for e in self.char.eigenheiten:
+            if e:
+                item = create_item(e, "eigenheit")
+                items.append(item)
+        # # -- Fertigkeiten -- #
+        for k, f in self.char.fertigkeiten.items():
+            # ist das jetzt ein dict?
+            item = create_item(f.name, "fertigkeit")
+            item["data"] = {
+                "basis": 0,
+                "fw": f.wert,
+                "pw": f.probenwert,
+                "pwt": f.probenwertTalent,
+                "attribut_0": f.attribute[0],
+                "attribut_1": f.attribute[1],
+                "attribut_2": f.attribute[2],
+                "gruppe": f.printclass,
+                "text": f.text
+            }
+            items.append(item)
+        # -- Talente -- #
+        for k, f in self.char.fertigkeiten.items():
+            for talent in f.gekaufteTalente:
+                item = create_item(talent, "talent")
+                item["data"] = {
+                    "fertigkeit": k,
+                }
+                items.append(item)
+        # -- Freie Fertigkeiten -- #
+        for ff in self.char.freieFertigkeiten:
+            if not ff.name:
+                continue
+            item = create_item(ff.name, "freie_fertigkeit")
+            item['data'] = {
+                "stufe": ff.wert,
+                "text": ff.name,
+                "gruppe": "1"
+            }
+            items.append(item)
+        # -- Übernatürliche Fertigkeiten -- #
+            # for f in CharakterPrintUtility.getÜberFertigkeiten(char):
+        #     fert = char.übernatürlicheFertigkeiten[f]
+        #     content.append(fert.name + " " + str(fert.probenwertTalent))
+
+        # content.append("\nÜbernatürliche Talente:")
+        # for talent in CharakterPrintUtility.getÜberTalente(char):
+        #     content.append(talent.anzeigeName + " " + str(talent.pw))
+        for uef in self.char.übernatürlicheFertigkeiten.values():
+            # print(uef)
+            item = create_item(uef.name, "uebernatuerliche_fertigkeit")
+            item["data"] = {
+                "basis": uef.basiswert,
+                "fw": uef.probenwert-uef.basiswert,
+                "pw": uef.probenwertTalent,  # eigentlich pwt.. aber ist in fvtt einfach pw für übernat
+                "attribut_0": uef.attribute[0],
+                "attribut_1": uef.attribute[1],
+                "attribut_2": uef.attribute[2],
+                "gruppe": uef.printclass,
+                "text": uef.text,
+                "voraussetzung": uef.voraussetzungen,
+            }
+            items.append(item)
+        # -- Zauber -- #
+        talente = set()
+        for k, f in self.char.übernatürlicheFertigkeiten.items():
+            for t in f.gekaufteTalente:  # list of strings
+                talente.add(t)
+        for t in talente:
+            talent = Wolke.DB.talente[t]
+            item = create_item(t, "zauber")
+            item["data"] = {
+                "fertigkeit_ausgewaehlt": "auto",
+                "fertigkeiten": ", ".join(talent.fertigkeiten),
+                "text": talent.text,
+                "gruppe": talent.printclass,  # TODO: ist das das selbe?
+                "pw": -1  # TODO: warum hat talent/zauber ein pw?? sollte aus fertigkeit kommen
+            }
+            res = re.findall('Vorbereitungszeit:(.*?)(?:$|\n)',
+                             talent.text, re.UNICODE)
+            if len(res) == 1:
+                item["data"]["vorbereitung"] = res[0].strip()
+            res = re.findall('Reichweite:(.*?)(?:$|\n)',
+                             talent.text, re.UNICODE)
+            if len(res) == 1:
+                item["data"]["reichweite"] = res[0].strip()
+            res = re.findall('Wirkungsdauer:(.*?)(?:$|\n)',
+                             talent.text, re.UNICODE)
+            if len(res) == 1:
+                item["data"]["wirkungsdauer"] = res[0].strip()
+            res = re.findall('Kosten:(.*?)(?:$|\n)', talent.text, re.UNICODE)
+            if len(res) == 1:
+                item["data"]["kosten"] = res[0].strip()
+            items.append(item)
+
+        # # -- Waffen -- #
+        print(self.char.waffen)
+        for w in self.char.waffen:
+            if not w.anzeigename:
+                continue
+            item = waffe_item(w)
+            items.append(item)
+        return items
+
+    def get_abgeleitet(self):
+        return {  # updated by foundry
+            "globalermod": 0,
+            "ws": 0,
+            "ws_stern": 0,
+            "be": 0,
+            "be_traglast": 0,
+            "ws_beine": 0,
+            "ws_larm": 0,
+            "ws_rarm": 0,
+            "ws_bauch": 0,
+            "ws_brust": 0,
+            "ws_kopf": 0,
+            "mr": 0,
+            "gs": 0,
+            "ini": 0,
+            "dh": 0,
+            "traglast_intervall": 0,
+            "traglast": 0,
+            # TODO: folgende werte werden nicht abgeleitet
+            # "gasp": None,
+            # "asp_stern": None,
+            # "asp_zugekauft": self.char.aspMod,  # TODO: sind aspMod == zugekauft??
+            # "gkap": None,
+            # "kap_stern": None,
+            # "kap_zugekauft": self.char.kapMod,
         }
 
+    def json_schreiben(self, val, params):
+        """Funktion wird als Filter in charakter_xml_schreiben (speichern) 
+        angewendet. `val` wird unverändert zurückgegeben wärend aus params['charakter']
+        die json file für foundry generiert und gespeichert wird.
+        """
+        # self.char = Wolke.Char
+        self.char = params['charakter']
+        self.actor = {}
 
-
+        # direct keys
+        attribute = {attr: {
+            "wert": self.char.attribute[attr].wert, "pw": 0} for attr in Definitionen.Attribute}
+        notes = self.char.kurzbeschreibung  # + "\n\n" + char.notizen
+        data = {
+            "gesundheit": {
+                "erschoepfung": 0,
+                "wunden": 0,
+                "wundabzuege": 0,
+                "wundenignorieren": 0,
+                "display": "Volle Gesundheit",
+                "hp": {
+                    "max": 9,
+                    "value": 9,
+                    "threshold": 0
+                }
+            },
+            "attribute": attribute,
+            "abgeleitete": self.get_abgeleitet(),
+            "schips": {
+                "schips": self.char.schipsMax,
+                "schips_stern": self.char.schipsMax
+            },
+            "initiative": 0,
+            "furcht": {
+                "furchtstufe": 0,
+                "furchtabzuege": 0,
+                "display": ""
+            },
+            "modifikatoren": {
+                "manuellermod": 0,
+                "nahkampfmod": 0
+            },
+            "geld": {
+                "dukaten": 0,
+                "silbertaler": 0,
+                "heller": 0,
+                "kreuzer": 0
+            },
+            "getragen": 0,
+            "notes": notes,
+            "misc": {
+                "selected_kampfstil": "kvk"
+            }
+        }
+        actor = {
+            # TODO: include base encoded character image?
+            # "_id": random_foundry_id(),
+            "name": self.char.name,
+            "type": "held",
+            "img": "systems/Ilaris/assets/images/token/kreaturentypen/humanoid.png",
+            "data": data,
+            "token": self.get_token(),
+            "items": self.get_items(),
+            "effects": []
+        }
+        # Dropped Infos
         # content.append("Spezies: " + char.rasse)
         # content.append("Status: " + Definitionen.Statusse[char.status])
         # content.append("Heimat: " + char.heimat)
-
-
-
-
 
         # content.append("\n=== Allgemeine und Profane Vorteile === ")
         # vorteile = CharakterPrintUtility.getVorteile(char)
@@ -311,7 +412,6 @@ class Plugin:
         # content.append("\nFreie Fertigkeiten:")
         # for fert in CharakterPrintUtility.getFreieFertigkeiten(char):
         #     content.append(fert)
-
 
         # content.append("\nVorteile:")
         # for v in vorteileKampf:
@@ -343,10 +443,6 @@ class Plugin:
 
         # content.append("\n=== Übernatürliche Fertigkeiten und Talente ===")
 
-        # content.append("\nVorteile:")
-        # for v in vorteileUeber:
-        #     content.append(v)
-
         # content.append("\nÜbernatürliche Fertigkeiten:")
         # for f in CharakterPrintUtility.getÜberFertigkeiten(char):
         #     fert = char.übernatürlicheFertigkeiten[f]
@@ -359,4 +455,4 @@ class Plugin:
         path = os.path.splitext(params["filename"])[0] + "_foundryvtt.json"
         with open(path, 'w', encoding="utf-8") as f:
             json.dump(actor, f, indent=2)
-
+        return val
