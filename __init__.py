@@ -8,6 +8,7 @@ import json
 from CharakterPrintUtility import CharakterPrintUtility
 import random
 
+__version__ = "3.2.2.a"
 
 def random_foundry_id():
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
