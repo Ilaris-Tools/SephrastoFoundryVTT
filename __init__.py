@@ -7,8 +7,9 @@ import re
 import json
 from CharakterPrintUtility import CharakterPrintUtility
 import random
+from Version import _sephrasto_version_major, _sephrasto_version_minor, _sephrasto_version_build
 
-__version__ = "3.2.2.a"
+__version__ = "3.2.2.b"  # Plugin Version
 
 def random_foundry_id():
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -42,7 +43,7 @@ def waffe_item(w):
         "dice_anzahl": w.W6,
         "dice_plus": w.plus,
         "fertigkeit": w.fertigkeit,
-        "talent": "",
+        "talent": w.talent,
         "rw": w.rw,
         "hauptwaffe": False,
         "nebenwaffe": False,
@@ -90,12 +91,17 @@ def waffe_item(w):
 
 class Plugin:
     def __init__(self):
-        # EventBus.addAction("pdf_geschrieben", self.pdfGeschriebenHook)
-        EventBus.addFilter("charakter_xml_schreiben", self.json_schreiben)
+        self.sephrasto_version = 10000 * _sephrasto_version_major \
+            + 100 * _sephrasto_version_minor + _sephrasto_version_build
+        if self.sephrasto_version > 30201:
+            EventBus.addFilter("charakter_xml_schreiben", self.json_schreiben)
+        else:
+            EventBus.addAction("pdf_geschrieben", self.json_schreiben_alt)
 
-    def speichernHook(self, val, params):
-        print(params['charakter'])
-        return val
+    def json_schreiben_alt(self, params):
+        params["filepath"] = params["filename"]
+        params["charakter"] = Wolke.Char
+        self.json_schreiben(None, params)
 
     @staticmethod
     def getDescription():
@@ -245,8 +251,8 @@ class Plugin:
             item = create_item(uef.name, "uebernatuerliche_fertigkeit")
             item["data"] = {
                 "basis": uef.basiswert,
-                "fw": uef.probenwert-uef.basiswert,
-                "pw": uef.probenwertTalent,  # eigentlich pwt.. aber ist in fvtt einfach pw für übernat
+                "fw": uef.probenwertTalent-uef.basiswert,
+                "pw": uef.probenwertTalent,  # TODO: eigentlich pwt.. aber ist in fvtt einfach pw für übernat fix in foundry
                 "attribut_0": uef.attribute[0],
                 "attribut_1": uef.attribute[1],
                 "attribut_2": uef.attribute[2],
@@ -353,14 +359,15 @@ class Plugin:
         angewendet. `val` wird unverändert zurückgegeben wärend aus params['charakter']
         die json file für foundry generiert und gespeichert wird.
         """
-        # self.char = Wolke.Char
         self.char = params['charakter']
         self.actor = {}
+        if not self.char.name:
+            self.char.name = "Der Namenlose"
 
         # direct keys
         attribute = {attr: {
             "wert": self.char.attribute[attr].wert, "pw": 0} for attr in Definitionen.Attribute}
-        notes = self.char.kurzbeschreibung + "\n\n" + self.char.notiz
+        notes = self.char.notiz
         data = {
             "gesundheit": {
                 "erschoepfung": 0,
