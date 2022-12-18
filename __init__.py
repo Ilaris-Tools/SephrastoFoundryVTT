@@ -50,7 +50,7 @@ def waffe_item(w):
         # TODO: make this a list in Foundry and write getters/checks if bools are required! #14
         # 'eigenschaften': w.eigenschaften,  # TODO: list of strings?
         "eigenschaften": {
-            "kopflastig": True,
+            "kopflastig": False,
             "niederwerfen": False,
             "parierwaffe": False,
             "reittier": False,
@@ -58,7 +58,7 @@ def waffe_item(w):
             "schild": False,
             "schwer_4": False,
             "schwer_8": False,
-            "stumpf": True,
+            "stumpf": False,
             "unberechenbar": False,
             "unzerstoerbar": False,
             "wendig": False,
@@ -67,10 +67,10 @@ def waffe_item(w):
             "kein_malus_nebenwaffe": False
         },
         "text": "",
-        "aufbewahrungs_ort": "mitführend",
+        "aufbewahrungs_ort": "tragend",
         "bewahrt_auf": [],
         "gewicht_summe": 0,
-        "gewicht": 1,
+        "gewicht": 0,
         "preis": 0,
         # TODO: is wm same for at/vt?
         "wm_at": w.wm,
@@ -348,10 +348,11 @@ class Plugin:
             # TODO: folgende werte werden nicht abgeleitet
             # "gasp": None,
             # "asp_stern": None,
-            # "asp_zugekauft": self.char.aspMod,  # TODO: sind aspMod == zugekauft??
+            "asp_zugekauft": self.char.asp.wert,
             # "gkap": None,
             # "kap_stern": None,
-            # "kap_zugekauft": self.char.kapMod,
+            # "kap_zugekauft": self.char.kapBasis,
+            "kap_zugekauft": self.char.kap.wert,
         }
 
     def json_schreiben(self, val, params):
@@ -403,7 +404,7 @@ class Plugin:
                 "heller": 0,
                 "kreuzer": 0
             },
-            "getragen": 0,
+            "getragen": 1,  # TODO: Tragend = welche nummer?
             "notes": notes,
             "misc": {
                 "selected_kampfstil": "kvk"
