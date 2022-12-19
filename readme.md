@@ -28,6 +28,7 @@ Waffeneigenschaften werden aktuell noch nicht übertragen!
 
 Der Einfachheit halber sind die Versionen als Zielversion von Sephrasto angegeben, für die es entwickelt und getestet wurde. Nicht jede kleine Sephrasto-Version wird ein Update des Plugins erfordern, daher sind Sprünge möglich. Sollten mehrere Updates für die selbe Version kommen, werden Buchstaben angehangen.
 
+- **3.2.2.c** Waffen/Items haben kein Gewicht mehr, zugekaufte KaP und AsP werden übertragen.
 - **3.2.2.b** Abwärtskompatibel und einige bugfixes nach dem ersten Test.
 - **3.2.2.a** Automatischer JSON-Export beim Speichern des Charakters.
 - **3.2.1.a** JSON-Export beim Schreiben der PDF. Enthält die meisten für Foundry relevanten Informationen. Nur für ein Beispielcharakter getestet.
