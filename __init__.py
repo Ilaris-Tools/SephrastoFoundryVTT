@@ -123,9 +123,9 @@ class Plugin:
             "lockRotation": False,
             "rotation": 0,
             "alpha": 1,
-            "vision": False,
-            "dimSight": 0,
-            "brightSight": 0,
+            "vision": True,
+            "dimSight": 10,
+            "brightSight": 5,
             "sightAngle": 0,
             "light": {
                 "alpha": 0.5,
