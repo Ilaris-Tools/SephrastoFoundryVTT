@@ -256,7 +256,7 @@ class Plugin:
                 "attribut_0": uef.attribute[0],
                 "attribut_1": uef.attribute[1],
                 "attribut_2": uef.attribute[2],
-                "gruppe": uef.printclass,
+                # "gruppe": uef.printclass,
                 "text": uef.text,
                 "voraussetzung": uef.voraussetzungen,
             }
@@ -273,7 +273,7 @@ class Plugin:
                 "fertigkeit_ausgewaehlt": "auto",
                 "fertigkeiten": ", ".join(talent.fertigkeiten),
                 "text": talent.text,
-                "gruppe": talent.printclass,  # TODO: ist das das selbe?
+                # "gruppe": talent.printclass,  # TODO: ist das das selbe?
                 "pw": -1  # TODO: warum hat talent/zauber ein pw?? sollte aus fertigkeit kommen
             }
             res = re.findall('Vorbereitungszeit:(.*?)(?:$|\n)',
