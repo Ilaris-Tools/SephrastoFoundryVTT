@@ -9,7 +9,7 @@ from CharakterPrintUtility import CharakterPrintUtility
 import random
 from Version import _sephrasto_version_major, _sephrasto_version_minor, _sephrasto_version_build
 
-__version__ = "3.2.2.b"  # Plugin Version
+__version__ = "3.4.0.a"  # Plugin Version
 
 def random_foundry_id():
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -38,9 +38,9 @@ def waffe_item(w):
     #         wafNode.set('lz',str(waff.lz))
     # print(w)
     wdata = {
-        "haerte": w.haerte,
+        "haerte": w.härte,  # TODO
         "beschaedigung": 0,
-        "dice_anzahl": w.W6,
+        "dice_anzahl": w.würfel,
         "dice_plus": w.plus,
         "fertigkeit": w.fertigkeit,
         "talent": w.talent,
@@ -185,8 +185,8 @@ class Plugin:
             # self.scriptPrio = 0
             # self.isUserAdded = True
             name = vorteil.name
-            if v in self.char.vorteileVariable:
-                name += f" ({self.char.vorteileVariable[v].kommentar})"
+            # if v in self.char.vorteileVariable:
+            #     name += f" ({self.char.vorteileVariable[v].kommentar})"
             if name == "Minderpakt":
                 name += f" ({self.char.minderpakt})"
             item = create_item(name, "vorteil")
@@ -215,7 +215,7 @@ class Plugin:
                 "attribut_0": f.attribute[0],
                 "attribut_1": f.attribute[1],
                 "attribut_2": f.attribute[2],
-                "gruppe": f.printclass,
+                # "gruppe": f.printclass,  # TODO
                 "text": f.text
             }
             items.append(item)
