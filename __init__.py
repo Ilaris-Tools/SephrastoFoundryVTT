@@ -1,15 +1,14 @@
 from EventBus import EventBus
 from Wolke import Wolke
-import Definitionen
-import Objekte
 import os
 import re
 import json
 from CharakterPrintUtility import CharakterPrintUtility
+from Hilfsmethoden import Hilfsmethoden
 import random
 from Version import _sephrasto_version_major, _sephrasto_version_minor, _sephrasto_version_build
 
-__version__ = "3.4.0.a"  # Plugin Version
+__version__ = "4.2.1.a"  # Plugin Version
 
 def random_foundry_id():
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -72,19 +71,19 @@ def waffe_item(w):
         "gewicht_summe": 0,
         "gewicht": 0,
         "preis": 0,
-        # TODO: is wm same for at/vt?
+        # TODO: is wm same for at/vt? Gatsu: yup
         "wm_at": w.wm,
         "wm_vt": w.wm,
         "mod_at": None,
         "mod_vt": None,
         "mod_schaden": ""
     }
-    if type(w) is Objekte.Nahkampfwaffe:
+    if w.nahkampf:
         # w.anzeigename  -> is empty
         waffe = create_item(w.anzeigename, "nahkampfwaffe")
     else:
         waffe = create_item(w.anzeigename, "fernkampfwaffe")
-        wdata['lz'] = w.lz  # TODO: this correct for FK?
+        wdata['lz'] = w.lz  # TODO: this correct for FK? Gatsu: yup
     waffe['data'] = wdata
     return waffe
 
@@ -173,28 +172,13 @@ class Plugin:
         """
         items = []
         # -- Vorteile -- #
-        # for v in CharakterPrintUtility.getVorteile(self.char):
-        for v in self.char.vorteile:
-            vorteil = Wolke.DB.vorteile[v]
-            # self.kosten = -1
-            # self.variableKosten = False
-            # self.kommentarErlauben = False
-            # self.linkKategorie = VorteilLinkKategorie.NichtVerknüpfen
-            # self.linkElement = ''
-            # self.script = None
-            # self.scriptPrio = 0
-            # self.isUserAdded = True
-            name = vorteil.name
-            # if v in self.char.vorteileVariable:
-            #     name += f" ({self.char.vorteileVariable[v].kommentar})"
-            if name == "Minderpakt":
-                name += f" ({self.char.minderpakt})"
-            item = create_item(name, "vorteil")
+        for v in self.char.vorteile.values():
+            item = create_item(v.name, "vorteil") # TODO: v.anzeigenameExt enthält mit dem Kommentar wichtige Infos, die in .name fehlen
             item["data"] = {
                 # "voraussetzung": ", ".join(vorteil.voraussetzungen),
-                "voraussetzung": vorteil.voraussetzungen,
-                "gruppe": vorteil.typ,  # TODO: vorteil.gruppe == vorteil.typ??
-                "text": vorteil.text
+                "voraussetzung": v.voraussetzungen,
+                "gruppe": Wolke.DB.einstellungen["Vorteile: Typen"].wert[v.typ], # "Kampfvorteile" etc.
+                "text": Hilfsmethoden.fixHtml(v.text)
             }
             # print(self.char.vorteileVariable)
             items.append(item)
@@ -204,7 +188,7 @@ class Plugin:
                 item = create_item(e, "eigenheit")
                 items.append(item)
         # # -- Fertigkeiten -- #
-        for k, f in self.char.fertigkeiten.items():
+        for f in self.char.fertigkeiten.values():
             # ist das jetzt ein dict?
             item = create_item(f.name, "fertigkeit")
             item["data"] = {
@@ -215,18 +199,19 @@ class Plugin:
                 "attribut_0": f.attribute[0],
                 "attribut_1": f.attribute[1],
                 "attribut_2": f.attribute[2],
-                # "gruppe": f.printclass,  # TODO
-                "text": f.text
+                "gruppe": Wolke.DB.einstellungen["Fertigkeiten: Typen profan"].wert[f.typ], # "Nahkampffertigkeiten" etc.
+                "text": Hilfsmethoden.fixHtml(f.text)
             }
             items.append(item)
         # -- Talente -- #
-        for k, f in self.char.fertigkeiten.items():
-            for talent in f.gekaufteTalente:
-                item = create_item(talent, "talent")
-                item["data"] = {
-                    "fertigkeit": k,
-                }
-                items.append(item)
+        for t in self.char.talente.values():
+            if t.spezialTalent:
+                continue
+            item = create_item(t.name, "talent") # TODO: t.anzeigename enthält mit dem Kommentar wichtige Infos, die in .name fehlen
+            item["data"] = {
+                "fertigkeit": t.hauptfertigkeit.name, # TODO Gatsu: auch profane talente können theoretisch mehreren fertigkeiten zugewiesen werden
+            }
+            items.append(item)
         # -- Freie Fertigkeiten -- #
         for ff in self.char.freieFertigkeiten:
             if not ff.name:
@@ -239,58 +224,37 @@ class Plugin:
             }
             items.append(item)
         # -- Übernatürliche Fertigkeiten -- #
-            # for f in CharakterPrintUtility.getÜberFertigkeiten(char):
-        #     fert = char.übernatürlicheFertigkeiten[f]
-        #     content.append(fert.name + " " + str(fert.probenwertTalent))
-
-        # content.append("\nÜbernatürliche Talente:")
-        # for talent in CharakterPrintUtility.getÜberTalente(char):
-        #     content.append(talent.anzeigeName + " " + str(talent.pw))
         for uef in self.char.übernatürlicheFertigkeiten.values():
-            # print(uef)
             item = create_item(uef.name, "uebernatuerliche_fertigkeit")
             item["data"] = {
                 "basis": uef.basiswert,
-                "fw": uef.probenwertTalent-uef.basiswert,
+                "fw": uef.wert,
                 "pw": uef.probenwertTalent,  # TODO: eigentlich pwt.. aber ist in fvtt einfach pw für übernat fix in foundry
                 "attribut_0": uef.attribute[0],
                 "attribut_1": uef.attribute[1],
                 "attribut_2": uef.attribute[2],
-                # "gruppe": uef.printclass,
-                "text": uef.text,
+                "gruppe": Wolke.DB.einstellungen["Fertigkeiten: Typen übernatürlich"].wert[uef.typ], # "Traditionszauber" etc.
+                "text": Hilfsmethoden.fixHtml(uef.text),
                 "voraussetzung": uef.voraussetzungen,
             }
             items.append(item)
         # -- Zauber -- #
-        talente = set()
-        for k, f in self.char.übernatürlicheFertigkeiten.items():
-            for t in f.gekaufteTalente:  # list of strings
-                talente.add(t)
-        for t in talente:
-            talent = Wolke.DB.talente[t]
-            item = create_item(t, "zauber")
+        for t in self.char.talente.values():
+            if not t.spezialTalent:
+                continue
+            item = create_item(t.name, "zauber") # TODO: t.anzeigename enthält mit dem Kommentar wichtige Infos, die in .name fehlen
             item["data"] = {
                 "fertigkeit_ausgewaehlt": "auto",
-                "fertigkeiten": ", ".join(talent.fertigkeiten),
-                "text": talent.text,
-                # "gruppe": talent.printclass,  # TODO: ist das das selbe?
-                "pw": -1  # TODO: warum hat talent/zauber ein pw?? sollte aus fertigkeit kommen
+                "fertigkeiten": ", ".join(t.fertigkeiten),
+                "text": Hilfsmethoden.fixHtml(t.text),
+                "gruppe": list(Wolke.DB.einstellungen["Talente: Spezialtalent Typen"].wert.values())[t.spezialTyp], # "Liturgien" etc., wert.keys() für Singular
+                "pw": -1,  # TODO: warum hat talent/zauber ein pw?? sollte aus fertigkeit kommen. Gatsu: t.probenwert ist der höchste pw aller fertigkeiten des talents
+                "vorbereitung" : t.vorbereitungszeit,
+                "reichweite" : t.reichweite,
+                "wirkungsdauer" : t.wirkungsdauer,
+                "kosten" : t.energieKosten
             }
-            res = re.findall('Vorbereitungszeit:(.*?)(?:$|\n)',
-                             talent.text, re.UNICODE)
-            if len(res) == 1:
-                item["data"]["vorbereitung"] = res[0].strip()
-            res = re.findall('Reichweite:(.*?)(?:$|\n)',
-                             talent.text, re.UNICODE)
-            if len(res) == 1:
-                item["data"]["reichweite"] = res[0].strip()
-            res = re.findall('Wirkungsdauer:(.*?)(?:$|\n)',
-                             talent.text, re.UNICODE)
-            if len(res) == 1:
-                item["data"]["wirkungsdauer"] = res[0].strip()
-            res = re.findall('Kosten:(.*?)(?:$|\n)', talent.text, re.UNICODE)
-            if len(res) == 1:
-                item["data"]["kosten"] = res[0].strip()
+
             items.append(item)
 
         # # -- Waffen -- #
@@ -314,7 +278,7 @@ class Plugin:
                 "rs_brust": r.rs[4],
                 "rs_kopf": r.rs[5],
                 "aktiv": False,
-                "text": r.text
+                "text": Hilfsmethoden.fixHtml(r.text)
             }
             items.append(item)
         # -- Inventar -- #
@@ -327,7 +291,7 @@ class Plugin:
         return items
 
     def get_abgeleitet(self):
-        return {  # updated by foundry
+        item = {  # updated by foundry
             "globalermod": 0,
             "ws": 0,
             "ws_stern": 0,
@@ -348,12 +312,14 @@ class Plugin:
             # TODO: folgende werte werden nicht abgeleitet
             # "gasp": None,
             # "asp_stern": None,
-            "asp_zugekauft": self.char.asp.wert,
             # "gkap": None,
             # "kap_stern": None,
-            # "kap_zugekauft": self.char.kapBasis,
-            "kap_zugekauft": self.char.kap.wert,
         }
+
+        for en in self.char.energien.values():
+            item[en.name.lower() + "_zugekauft"] = en.wert
+
+        return item
 
     def json_schreiben(self, val, params):
         """Funktion wird als Filter in charakter_xml_schreiben (speichern)
@@ -367,7 +333,7 @@ class Plugin:
 
         # direct keys
         attribute = {attr: {
-            "wert": self.char.attribute[attr].wert, "pw": 0} for attr in Definitionen.Attribute}
+            "wert": self.char.attribute[attr].wert, "pw": 0} for attr in self.char.attribute}
         notes = self.char.notiz
         data = {
             "gesundheit": {
@@ -385,8 +351,8 @@ class Plugin:
             "attribute": attribute,
             "abgeleitete": self.get_abgeleitet(),
             "schips": {
-                "schips": self.char.schipsMax,
-                "schips_stern": self.char.schipsMax
+                "schips": self.char.abgeleiteteWerte["SchiP"].wert,
+                "schips_stern": self.char.abgeleiteteWerte["SchiP"].wert, #TODO Gatsu: .finalwert für den durch finanzen modifizierten "aktuellen" wert, vermutlich aber nciht so sinnvoll
             },
             "initiative": 0,
             "furcht": {
