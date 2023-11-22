@@ -1,4 +1,6 @@
 # SephrastoFoundryVTT
+> Das Plugin kann jetzt direkt im Paket mit vielen anderen Sephrasto Plugins heruntergeladen werden. Dieses Repository bleibt noch online um alte Sephrasto Versionen zu unterstützen, zukünftige Updates gibt es direkt auf: https://github.com/brzGatsu/SephrastoPlugins
+
 
 Ein Sephrasto Plugin um Charaktere automatisch in einem Format zu speichern, das direkt als Akteur im Ilaris System für FoundryVTT verwendet werden kann.
 
